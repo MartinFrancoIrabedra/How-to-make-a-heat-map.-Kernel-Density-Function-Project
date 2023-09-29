@@ -1,0 +1,209 @@
+---
+title: "R project Computer Aided Statistical Analysis."
+author: "Martin Franco"
+date: '2022-02-26'
+output:
+  html_document:
+    df_print: paged
+  pdf_document:
+    latex_engine: xelatex
+always_allow_html: true
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Kernel density estimation
+
+
+Generally we use parametric statistics when analyzing data. These use strong assumptions about the distribution of the population from which the sample was drawn (just like assuming it has a normal distribution) but sometimes we have no clue on what a good parametric model could be used in each case.
+Nonparametric statistics are not based on such assumptions, which means that the data collected from a sample does not follow a specific distribution. Here we try to be as general as possible by estimating its unknown density function. 
+Densities are easy to visualize and interpret, making them ideal tools for exploring continuous random variable data. They provide immediate graphical information on the shape of the data. One of the most popular density estimators is the Kernel Density Estimator (KDE). 
+The KDE is calculated by weighting the distances of all data points. If we see more points in one location, the estimate is higher giving the probability of seeing a point at that location.
+Histograms are also a very used density estimator, but we need to specify an origin x0 while for the KDE that is not needed.
+The mathematical definition of the KDE is :
+$$
+f(x) = \frac{1}{nh} \sum_{i = 1}^{n}K(\frac{x−x_i}{h})
+$$
+The variable K represents the Kernel function. Using different kernel functions (such as the Gaussian Kernel or the Epanechnikov kernel among others) will produce different estimates. x_i represents the i th observation of x.
+It is important to mark that the KDE inherits the smoothness properties of the kernel function being used. But there is something more important than the Kernel function when estimating the KDE, and that is the choice of the bandwidth h.
+The Bandwidth h is a smoothing parameter that tells the number of “spikes” at each observation. When h increases, the KDE becomes smoother.
+
+There are several applications for a KDE but the one that will be implemented and analyzed here is the creation of a heatmap.
+The subject of study will be penalties on football, more specifically where do players kick the ball while taking a penalty so the goalkeeper can know where is it most likely for players to shoot in order to score.
+A penalty is when a footballer receives a foul inside the opponent’s 18 yard box. The team that had the player that was fouled must take a direct shot from the 11 meters point in front of the goal. 
+
+
+#Data Generating Process
+
+A KDE will be used to estimate the density function in a two-dimensional location (x, y) of the goal. X is considered to be the length of the goal being 7.32 meters long and Y to be the height being 2.44 meters high from the ground to top.
+Density estimation via two-dimensional KDE follows a form: 
+$$
+f_h(x,y) = \frac{1}{nh_xh_y} \sum_{i = 1}^{n}K_x(\frac{x−x_i }{h_x})K_y(\frac{y−y_i }{h_y})
+$$
+where hx and hy are bandwidths for x and y, respectively, Kx and Ky are the respective kernels and y_i, x_i are the respective observations.
+With a matrix notation the formula follows a form:
+$$
+f(x;H) = \frac{1}{n} \sum_{i = 1}^{n}K_H({x−x_i })
+$$
+being H  is the bandwidth matrix which is symmetric and positive-definite, and
+$$
+K_H(x) = |H|^\frac{−1}{2}K(H^\frac{−1}{2}x). 
+$$
+Here the Gaussian Kernel 
+$$
+K(x) = (2π)^\frac{−1}{2}e^\frac{−x2}{2}  
+$$
+will be the Kernel function implemented.
+The data gathered belongs to the Serie A of Italian football of the season 2020/2021.
+In ordered to determine the position of the ball when the players kick in a penalty a picture of the moment of the ball getting to the line of goal is taken and with a coordinate system overlapping the goal is being used. This process is repeated with all the penalties taken during the season in the Serie A. There is a total number of 98 penalties taken which will be analyzed to estimate its KDE.
+```{r}
+x <- c(5.60,1.90,3.40,2.25,1.10,6.75,1.50,0.80,2.10,1.20,2.50,5.10,6.05,2.40,3.20,5.60,1.65,6.25,6.50,6.90,1.00,0.50,0.90,1.25,6.75,1.25,6.50,5.50,1.30,6.75,6.40,3.05,6.80,6.60,4.50,0.65,2.30,0.75,1.40,6.50,1.15,6.25,4.50,4.00,0.80,5.00,1.75,0.30,6.50,3.25,1.00,1.75,4.45,5.80,0.95,4.85,5.55,6.90,1.00,2.00,0.15,2.25,0.50,0.60,2.20,3.50,1.50,2.15,3.25,6.25,0.25,5.85,6.15,6.30,0.75,6.10,5.50,5.80,0.50,5.75,0.40,6.25,1.20,2.30,2.40,2.40,2.50,6.25,6.00,5.00,1.50,-0.40,1.75,5.60,2.75,2.50,3.00,1.35)
+
+y <- c(1.85,0.15,2.10,1.15,0.90,0.15,0.60,0.60,1.40,1.50,0.15,1.60,2.15,1.85,1.50,1.90,0.15,0.15,0.15,0.15,0.15,0.25,0.60,1.80,0.95,0.85,1.10,1.25,2.00,0.50,0.15,1.90,0.50,0.60,1.00,0.15,2.00,0.75,2.10,1.25,1.00,0.15,0.40,1.10,0.15,1.25,0.80,0.15,0.60,1.90,0.15,1.50,2.00,0.15,1.50,1.45,0.15,0.15,0.15,0.60,0.15,0.80,0.15,0.15,0.90,1.50,1.25,1.50,2.00,1.40,0.50,1.05,0.80,1.50,0.55,0.40,0.65,0.75,0.35,0.75,0.15,0.40,0.15,0.25,0.15,1.25,2.75,1.00,0.15,0.30,0.25,0.15,0.15,0.80,0.50,0.15,0.55,1.50)
+
+XY <- cbind(x,y)
+
+```
+
+```{r}
+{plot(XY)
+abline(h=2.44, v=7.32, col="red")
+abline(h=0, v=0, col="red")}
+```
+
+Here we have the data points visualized in a two dimensional coordinate system. Both axes x and y, and the red lines(x=7.32 , y=2.44) combined simulates the goal of a football field.
+With this data we do not assume any distribution function which means distribution function is unknown. To estimate the density distribution function the KDE is being used. A possible alternative to estimate the density is the histogram. This density estimator has two tuning parameters: The origin x0 and the bandwidth h.
+The advantage of KDE over the histogram is that for the KDE the bandwidth h is the only tuning parameter used, while the origin x0 does not need to be specified.
+The goal of the analysis is to see to which side of the goal line players shoot the most.
+
+# Code and analysis
+
+```{r}
+h_x=0.75
+h_y=0.5
+n=length(x) # which is equal to length(y)
+n
+kernel<-function(x, y, h_x, h_y, x_i, y_i){
+  summe <- 0
+  for (i in 1:length(x_i)) {
+    local_x <- (x - x_i[i])/h_x
+    k_x <- ((2*pi)**(-1/2)) * exp((-local_x**2)/2)
+    local_y <- (y - y_i[i])/h_y
+    k_y <- ((2*pi)**(-1/2)) * exp((-local_y**2)/2)
+    summe = summe + k_x*k_y
+  }  
+  return(summe/(h_x*h_y*length(x_i)))
+}
+
+kernel(x,y,h_x,h_y,x,y)
+
+kernel_vector <- function(daten_x, daten_y, h_x, h_y){
+  kern <- c()
+  for(i in 1:length(daten_x)){
+    kern[i] <- kernel(daten_x[i], daten_y[i], h_x, h_y, daten_x, daten_y)
+  }
+  return(kern)
+}
+z <- kernel_vector(x, y, h_x, h_y)
+
+kde <- data.frame(x=x,y=y,z=z)
+
+library(MASS)
+h <- c(h_x, h_y)
+density<-kde2d(x,y,h, n=n)
+filled.contour(density,color.palette=colorRampPalette(c('white','blue','purple','red','darkred')))
+```
+
+
+```{r}
+{
+  library(plotly)
+plot_ly(data=kde,x=x,y=y,z=z, type="mesh3d")
+}
+```
+With this plot we can see the coordinates of where players shoot more often in ordered to strike. The distribution of the penalties has two main areas to cover which are the mid-lower part of the goal one for each side left and right. The distribution shows more concentration of shots taken on the left side of the goal.
+The bandwidths selected 0.75 and 0.5 for h_x and h_y respectively.
+In the matrix notation the diagonal matrix 
+$$
+X = \begin{bmatrix}h_1^2 & h_{12}^2\\
+h_{12}^2 & h_2^2
+\end{bmatrix}
+or
+X = \begin{bmatrix}h_1^2 & 0\\
+0 & h_2^2
+\end{bmatrix}
+$$
+with both values used. The bandwidth matrix is symmetric and positive definite.
+
+As we change the bandwidth matrix H, the smoothness of the function changes.
+In the multivariate KDE,  the bandwidth matrix controls the degree and the direction of the smoothness.
+
+```{r}
+h_x2 = 0.2
+h_y2 = 0.1
+
+kernel(x,y,h_x2,h_y2,x,y)
+z2 <- kernel_vector(x, y, h_x2, h_y2)
+
+kde2 <- data.frame(x=x,y=y,z=z2)
+
+library(MASS)
+h_2 <- c(h_x2, h_y2)
+density<-kde2d(x,y,h_2, n=n)
+filled.contour(density,color.palette=colorRampPalette(c('white','blue','purple','red','darkred')))
+```
+
+```{r}
+{
+  plot_ly(data=kde2,x=x,y=y,z=z2, type="mesh3d")
+}
+```
+
+
+Here we notice the change of the smoothness of the function when the values of H variates. Due to its two dimensional characteristics of the KDE, the smoothness of the function is not as visible as in the unidimensional case but it is visible how when the values of the matrix H decrease, the function becomes more sharply pointed since the number of spikes becomes more noticeable.
+
+```{r}
+h_x3 = 9
+h_y3 = 8
+
+kernel(x,y,h_x3,h_y3,x,y)
+z3 <- kernel_vector(x, y, h_x3, h_y3)
+
+kde3 <- data.frame(x=x,y=y,z=z3)
+
+library(MASS)
+h_3 <- c(h_x3, h_y3)
+density<-kde2d(x,y,h_3, n=n)
+filled.contour(density,color.palette=colorRampPalette(c('white','blue','purple','red','darkred')))
+```
+
+```{r}
+{
+  plot_ly(data=kde3,x=x,y=y,z=z3, type="mesh3d")
+}
+```
+
+In the case of higher values of the bandwidth H like in the last plot, the number of spikes decreases and the function becomes smoother. Here the double pointed shape is no longer visible. For this data very high values of H do not make sense considering it weights the values to the middle of the goal which it was one of the places where players shot the less.
+
+In conclusion, we can see how the change of the bandwidth can vary the smoothness of the density function. When the values of the bandwidth increase, the function becomes smoother and when they decrease, the function becomes sharper.
+
+Another property that can be investigated is the estimation of the bandwidth H that gives the bet fit possible to the analysis .We follow a process analogous to the univariate case for the bandwidth selection.
+We consider the MISE (mean integrated squared error) but in the multivariate case
+
+$$
+MISE [f(x;H) ] = E [∫(f(x;H)−f(x))^2dx] = ∫ M S E [f(x;H)]d x
+$$
+
+
+and we minimize the argument  in order to get optimal MISE bandwidth matrix.
+In practice, obtaining this is unfeasible, and the first step towards constructing a usable selector is to derive a more practical error criterion, such as the AMISE. The result is provided from the bias and variance trade off.
+The two most popular estimation methods for bandwidth selection are the Plug-in method and the Least Squares Cross Validation but those will not be analysed in this project.
+
+
+
+
+
+
+
