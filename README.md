@@ -1,4 +1,4 @@
-# How to make a heat map? Kernel-Density-Function-Project
+# How to make a heat map? Kernel-Density-Function project
 
 As a fan of football I tend to see heat maps all the time, specifically about the players position on the field. What about the penalties? Where do they aim the most to score when in front of the goal 11 meters away? The goal of the analysis is to see to which side of the goal line players shoot the most.
 For this we would think to use a density distribution function to know with a certain probability where the players shoot but here we do not have a defined density function. We simply do not know how the distribution of the location of where the players shoot is.
